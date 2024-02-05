@@ -94,14 +94,13 @@ pub fn update_best_bid_and_ask(resp: model::StreamResponse, order_book: &mut mod
     let bid_fprice = bid_price.parse::<f64>().unwrap_or_default();
     let bid_fqty = bid_qty.parse::<f64>().unwrap_or_default();
 
-    let mut res: BTreeMap<model::FloatString, f64> = BTreeMap::new();
-    res = order_book.bids_map
+    let mut bid_res: BTreeMap<model::FloatString, f64> = order_book.bids_map
     .iter()
-    .filter(|(p, _)| p.val > bid_fprice).map(|(k, v)| (k.clone(), v.clone()))
+    .filter(|(p, _)| p.val <= bid_fprice).map(|(k, v)| (k.clone(), v.clone()))
     .collect();
 
-    res.insert(model::FloatString{val: bid_fprice}, bid_fqty);
-    order_book.bids_map = res;
+    bid_res.insert(model::FloatString{val: bid_fprice}, bid_fqty);
+    order_book.bids_map = bid_res;
 
     // update best ask
     let ask_price = book_ticker_data.get("a").and_then(Value::as_str).unwrap_or_default();
@@ -111,12 +110,11 @@ pub fn update_best_bid_and_ask(resp: model::StreamResponse, order_book: &mut mod
     let ask_fqty = ask_qty.parse::<f64>().unwrap_or_default();
 
 
-    let mut res: BTreeMap<model::FloatString, f64> = BTreeMap::new();
-    res = order_book.asks_map
+    let mut ask_res: BTreeMap<model::FloatString, f64> = order_book.asks_map
     .iter()
-    .filter(|(p, _)| p.val < ask_fprice).map(|(k, v)| (k.clone(), v.clone()))
+    .filter(|(p, _)| p.val >= ask_fprice).map(|(k, v)| (k.clone(), v.clone()))
     .collect();
 
-    res.insert(model::FloatString{val: ask_fprice}, ask_fqty);
-    order_book.asks_map = res;
+    ask_res.insert(model::FloatString{val: ask_fprice}, ask_fqty);
+    order_book.asks_map = ask_res;
 }

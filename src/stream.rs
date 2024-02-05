@@ -2,7 +2,7 @@ use tokio_tungstenite::tungstenite::protocol::Message;
 use crate::{manager, model};
 
 const DEPTH: &str = "@depth";
-const BOOK_TICKER: &str = "@bookticker";
+const BOOK_TICKER: &str = "@bookTicker";
 
 pub async fn handle_stream_data(message: Message, order_book: &mut model::OrderBook) {
     let binary_data = message.into_data();
