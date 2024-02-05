@@ -78,3 +78,45 @@ pub async fn update_order_book(resp: model::StreamResponse, order_book: &mut mod
         }
     }
 }
+
+pub fn update_best_bid_and_ask(resp: model::StreamResponse, order_book: &mut model::OrderBook) {
+    let book_ticker_data = resp.data;
+    let curr_update_id = book_ticker_data.get("u").and_then(Value::as_i64).unwrap_or_default();
+    
+    if curr_update_id < order_book.last_update_id {
+        return;
+    }
+
+    // update best bid
+    let bid_price = book_ticker_data.get("b").and_then(Value::as_str).unwrap_or_default();
+    let bid_qty = book_ticker_data.get("B").and_then(Value::as_str).unwrap_or_default();
+
+    let bid_fprice = bid_price.parse::<f64>().unwrap_or_default();
+    let bid_fqty = bid_qty.parse::<f64>().unwrap_or_default();
+
+    let mut res: BTreeMap<model::FloatString, f64> = BTreeMap::new();
+    res = order_book.bids_map
+    .iter()
+    .filter(|(p, _)| p.val > bid_fprice).map(|(k, v)| (k.clone(), v.clone()))
+    .collect();
+
+    res.insert(model::FloatString{val: bid_fprice}, bid_fqty);
+    order_book.bids_map = res;
+
+    // update best ask
+    let ask_price = book_ticker_data.get("a").and_then(Value::as_str).unwrap_or_default();
+    let ask_qty = book_ticker_data.get("A").and_then(Value::as_str).unwrap_or_default();
+
+    let ask_fprice = ask_price.parse::<f64>().unwrap_or_default();
+    let ask_fqty = ask_qty.parse::<f64>().unwrap_or_default();
+
+
+    let mut res: BTreeMap<model::FloatString, f64> = BTreeMap::new();
+    res = order_book.asks_map
+    .iter()
+    .filter(|(p, _)| p.val < ask_fprice).map(|(k, v)| (k.clone(), v.clone()))
+    .collect();
+
+    res.insert(model::FloatString{val: ask_fprice}, ask_fqty);
+    order_book.asks_map = res;
+}
