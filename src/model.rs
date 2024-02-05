@@ -18,7 +18,7 @@ pub struct StreamResponse {
 }
 
 // using custom struct to do ordering since f64 does not implement Eq (due to NaN)
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct FloatString {
     pub val: f64,
 }

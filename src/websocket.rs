@@ -1,5 +1,5 @@
 use binance_spot_connector_rust::{
-    market_stream::diff_depth::DiffDepthStream,
+    market_stream::{book_ticker::BookTickerStream, diff_depth::DiffDepthStream},
     tokio_tungstenite::{BinanceWebSocketClient, WebSocketState},
 };
 use tokio_tungstenite::MaybeTlsStream;
@@ -14,6 +14,7 @@ pub async fn init(query: &str) -> WebSocketState<MaybeTlsStream<TcpStream>> {
     // Subscribe to streams
     conn.subscribe(vec![
         &DiffDepthStream::from_1000ms(query).into(),
+        &BookTickerStream::from_symbol(query).into(),
     ])
     .await;
 
