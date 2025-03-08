@@ -6,6 +6,7 @@ use crate::{endpoints, model};
 pub async fn init_order_book(query: &str) -> model::OrderBook {
     let depth_snapshot_data = endpoints::depth_snapshot(query).await;
     model::OrderBook{
+        symbol: query.to_string(),
         last_update_id: depth_snapshot_data.lastUpdateId,
         prev_final_update_id: -1,
         bids_map: init_price_map(&depth_snapshot_data.bids),
