@@ -53,7 +53,7 @@ impl OrderBook {
     }
 
     pub fn update_book_ticker(&mut self, data: &BookTickerUpdate) {
-        log::info!("{:?}", data);
+        // log::info!("{:?}", data);
         // skip since the depth update already contains all the latest levels
         if data.last_update_id <= self.last_update_id {
             return;
@@ -73,7 +73,7 @@ impl OrderBook {
     }
  
     pub fn update_depth(&mut self, data: &DepthUpdate) {
-        log::info!("{:?}", data);
+        // log::info!("{:?}", data);
         // when applying a snapshot, update local book as follows:
         // 1. Remove any levels better than the best snapshot level
         // 2. Update all levels within the snapshot
