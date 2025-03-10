@@ -27,6 +27,7 @@ async fn main() -> Result<(), Error> {
         match message {
             Ok(message) => {
                 websocket::handle_stream_data(message, &mut order_book).await;
+                // add/remove debug prints as needed
                 println!("Top Level: {:?}", order_book.get_best_bid_ask());
                 println!("{}", order_book.to_string());
             }

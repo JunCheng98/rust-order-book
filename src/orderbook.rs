@@ -1,8 +1,11 @@
-use std::{cmp::Ordering, collections::BTreeMap, fmt::Write};
+use std::{cmp::Ordering, collections::BTreeMap, fmt::Write, ops::Bound::{Included, Unbounded}};
 
 use crate::response::{BookTickerUpdate, DepthUpdate};
 
 use f64 as Quantity;
+
+#[cfg(test)]
+mod tests;
 
 
 // use custom struct to order by price since f64 does not implement Eq (due to NaN)
@@ -50,39 +53,50 @@ impl OrderBook {
     }
 
     pub fn update_book_ticker(&mut self, data: &BookTickerUpdate) {
-        // log::info!("{:?}", data);
+        log::info!("{:?}", data);
         // skip since the depth update already contains all the latest levels
         if data.last_update_id <= self.last_update_id {
             return;
         }
-        // for speed, we favour making a copy here over retain(), which scans the entire map
-        let filtered_bids: BTreeMap<Price, _> = self.bid_levels
-            .iter()
-            .filter(|(&prc, _)| prc.val <= data.bid_price)
+        // filter out levels that are better than the current best bid/ask
+        self.bid_levels = self.bid_levels
+            .range((Unbounded, Included(Price{ val: data.bid_price })))
             .map(|(&prc, &qty)| (prc, qty))
             .collect();
-        let filtered_asks: BTreeMap<_, _> = self.ask_levels
-            .iter()
-            .filter(|(&prc, _)| prc.val >= data.ask_price)
+        self.ask_levels = self.ask_levels
+            .range((Included(Price{ val: data.ask_price }), Unbounded))
             .map(|(&prc, &qty)| (prc, qty))
             .collect();
-
-        self.bid_levels = filtered_bids;
-        self.ask_levels = filtered_asks;
         // update the best bid/ask qty if the price exists, otherwise insert
         self.bid_levels.insert(Price{ val: data.bid_price }, data.bid_qty);
         self.ask_levels.insert(Price{ val: data.ask_price }, data.ask_qty);
     }
  
     pub fn update_depth(&mut self, data: &DepthUpdate) {
-        // log::info!("{:?}", data);
-        // since this returns the snapshot for the top k levels, just replace the entire orderbook
-        self.bid_levels = init_price_map(&data.bids);
-        self.ask_levels = init_price_map(&data.asks);
+        log::info!("{:?}", data);
         // when applying a snapshot, update local book as follows:
         // 1. Remove any levels better than the best snapshot level
         // 2. Update all levels within the snapshot
-        // 3. Leave the levels worse than the last snapshot level
+        // 3. Keep the levels worse than the last snapshot level
+        // if we want to prevent lower levels from becoming stale, use snapshot API periodically
+        let mut snapshot_bids = init_price_map(&data.bids);
+        let mut snapshot_asks = init_price_map(&data.asks);
+
+        if let Some((worst_bid_prc, _)) = snapshot_bids.first_key_value() {
+            self.bid_levels = self.bid_levels
+                .range((Unbounded, Included(worst_bid_prc)))
+                .map(|(&prc, &qty)| (prc, qty))
+                .collect();
+        }
+        if let Some((worst_ask_prc, _)) = snapshot_asks.last_key_value() {
+            self.ask_levels = self.ask_levels
+                .range((Included(worst_ask_prc), Unbounded))
+                .map(|(&prc, &qty)| (prc, qty))
+                .collect();
+        }
+
+        self.bid_levels.append(&mut snapshot_bids);
+        self.ask_levels.append(&mut snapshot_asks);
     }
 
     // if one side of the book is empty, return None to signal that we should fix the book
@@ -109,7 +123,7 @@ impl OrderBook {
             // handle cases where there are uneven levels by padding with empty string
             match next_bid {
                 Some((bid_price, bid_qty)) => write!(result, "[ {:>7} ] {:>8} | ", bid_qty, bid_price.val).unwrap(),
-                None => result.push_str("           | "),    
+                None => result.push_str("                      "),    
             }
             match next_ask {
                 Some((ask_price, ask_qty)) => write!(result, "{:<8} [ {:>7} ]\n", ask_price.val, ask_qty).unwrap(),
@@ -129,44 +143,4 @@ pub fn init_price_map(price_to_qty: &Vec<[String; 2]>) -> BTreeMap<Price, Quanti
         .map(|[prc, qty]| 
             (Price{ val: prc.parse::<f64>().unwrap_or_default() }, qty.parse::<f64>().unwrap_or_default()))
         .collect()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn ticker_worse_price() {
-
-    }
-
-    #[test]
-    fn ticker_better_price() {
-
-    }
-
-    #[test]
-    fn ticker_same_price() {
-
-    }
-
-    #[test]
-    fn ticker_same_price_diff_qty() {
-
-    }
-
-    #[test]
-    fn best_level_normal() {
-
-    }
-
-    #[test]
-    fn best_level_one_empty() {
-
-    }
-
-    #[test]
-    fn best_level_both_empty() {
-        
-    }
 }
