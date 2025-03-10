@@ -38,7 +38,7 @@ pub async fn handle_stream_data(message: Message, order_book: &mut OrderBook) {
             }
         }
         Err(err) => {
-            log::error!("Error when deserializing to response: {}", err);
+            log::error!("Error when deserializing: {} (response: {})", err, data);
         }
     }
 }

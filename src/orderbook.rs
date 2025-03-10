@@ -109,6 +109,8 @@ impl OrderBook {
     }
 
     pub fn to_string(&self) -> String {
+        const PRINT_MAX_LEVELS: u32 = 20;
+
         let mut result = String::new();
 
         let mut bid_iter = self.bid_levels.iter().rev().peekable();
@@ -116,6 +118,10 @@ impl OrderBook {
 
         let mut level = 1;
         while bid_iter.peek().is_some() || ask_iter.peek().is_some() {
+            if level > PRINT_MAX_LEVELS {
+                break;
+            }
+
             let next_bid = bid_iter.next();
             let next_ask = ask_iter.next();
 
@@ -123,7 +129,7 @@ impl OrderBook {
             // handle cases where there are uneven levels by padding with empty string
             match next_bid {
                 Some((bid_price, bid_qty)) => write!(result, "[ {:>7} ] {:>8} | ", bid_qty, bid_price.val).unwrap(),
-                None => result.push_str("                      "),    
+                None => result.push_str("                      | "),    
             }
             match next_ask {
                 Some((ask_price, ask_qty)) => write!(result, "{:<8} [ {:>7} ]\n", ask_price.val, ask_qty).unwrap(),
